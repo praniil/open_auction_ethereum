@@ -6,7 +6,7 @@ contract OpenAuction {
     uint public auctionEndTime;
 
     address public highestBidder;
-    address public highestBid;
+    uint public highestBid;
 
     mapping(address => uint) pendingReturns;
     bool ended;
@@ -19,7 +19,7 @@ contract OpenAuction {
     //the auction has already ended
     error AuctionAlreadyEnded();
     //there is already a higher or equal bid
-    error BidNotHightEnough(uint highestBid);
+    error BidNotHighEnough(uint highestBid);
     //the auction has not ended yet
     error AuctionBotYetEnded();
     //the function auctionEnd has already been called
@@ -30,4 +30,22 @@ contract OpenAuction {
         beneficiary = beneficiaryAddress;
         auctionEndTime = block.timestamp + biddingTime;     //block.tiemstamp is current time
     }
+
+    function bid() external payable {   //payable is required for the function to be able to receive the Ether
+        if (block.timestamp > auctionEndTime) {
+            revert AuctionAlreadyEnded();
+        }
+
+        if (msg.value <= highestBid) {
+            revert BidNotHighEnough(highestBid);
+        }
+
+        if (highestBid != 0) {
+            pendingReturns[highestBidder] += highestBid;
+        }
+        
+        highestBidder = msg.sender;
+        highestBid = msg.value;
+        emit HighestBidIncreased(msg.sender, msg.value);
+    } 
 }
