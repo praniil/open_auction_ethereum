@@ -21,7 +21,7 @@ contract OpenAuction {
     //there is already a higher or equal bid
     error BidNotHighEnough(uint highestBid);
     //the auction has not ended yet
-    error AuctionBotYetEnded();
+    error AuctionNotYetEnded();
     //the function auctionEnd has already been called
     error AuctionEndAlreadyCalled();
 
@@ -48,4 +48,39 @@ contract OpenAuction {
         highestBid = msg.value;
         emit HighestBidIncreased(msg.sender, msg.value);
     } 
+
+    function withdraw() external returns (bool) {
+        uint amount = pendingReturns[msg.sender];
+        if (amount > 0) {
+            pendingReturns[msg.sender] = 0;     //setting pendingReturns[msg.sender] = 0 prevents the double spending attack
+            if (!payable(msg.sender).send(amount)) {
+                pendingReturns[msg.sender] = amount;
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function auctionEnd() external {
+        // It is a good guideline to structure functions that interact
+        // with other contracts (i.e. they call functions or send Ether)
+        // into three phases:
+        // 1. checking conditions
+        // 2. performing actions (potentially changing conditions)
+        // 3. interacting with other contracts
+
+        //1.Condition
+        if (block.timestamp < auctionEndTime) {
+            revert AuctionNotYetEnded();
+        }
+        if (ended)
+            revert AuctionEndAlreadyCalled();
+
+        //2. Effects
+        ended = true;
+        emit AuctionEnded(highestBidder, highestBid);
+
+        //3. Interaction
+        beneficiary.transfer(highestBid);
+    }
 }
